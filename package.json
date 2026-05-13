@@ -1,7 +1,7 @@
 {
-  "name": "@dylankenneally/react-native-ssh-sftp",
+  "name": "@termlnk/react-native-ssh-sftp",
   "version": "1.7.0",
-  "description": "SSH and SFTP client library for React Native",
+  "description": "SSH and SFTP client library for React Native, with iOS Simulator support on Apple Silicon and Gradle 9 compatibility.",
   "main": "lib/sshclient.js",
   "scripts": {
     "_postinstall": "npm run compile",
@@ -18,17 +18,20 @@
     "ssh",
     "sftp"
   ],
-  "homepage": "https://github.com/dylankenneally/react-native-ssh-sftp#readme",
+  "homepage": "https://github.com/termlnk/react-native-ssh-sftp#readme",
   "bugs": {
-    "url": "https://github.com/dylankenneally/react-native-ssh-sftp/issues",
-    "email": "project@hostname.com"
+    "url": "https://github.com/termlnk/react-native-ssh-sftp/issues"
   },
   "author": {
-    "name": "Dylan Kenneally",
-    "email": "github@dylankenneally.com",
-    "url": "https://github.com/dylankenneally/react-native-ssh-sftp"
+    "name": "termlnk",
+    "url": "https://github.com/termlnk"
   },
   "contributors": [
+    {
+      "name": "Dylan Kenneally",
+      "email": "github@dylankenneally.com",
+      "url": "https://github.com/dylankenneally/react-native-ssh-sftp"
+    },
     {
       "name": "Emmanuel Natividad",
       "url": "https://github.com/enatividad/react-native-ssh-sftp"
@@ -54,12 +57,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dylankenneally/react-native-ssh-sftp.git"
+    "url": "git+https://github.com/termlnk/react-native-ssh-sftp.git"
   },
   "files": [
     "android/",
     "ios/",
     "lib/",
+    "CSSH-Binary.podspec",
     "RNSSHClient.podspec"
   ],
   "devDependencies": {

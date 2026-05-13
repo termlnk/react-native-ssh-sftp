@@ -1,80 +1,90 @@
 # SSH and SFTP client library for React Native
 
-SSH and SFTP client library for React Native on iOS and Android.
+[`@termlnk/react-native-ssh-sftp`](https://github.com/termlnk/react-native-ssh-sftp) is a fork of [`@dylankenneally/react-native-ssh-sftp`](https://github.com/dylankenneally/react-native-ssh-sftp) maintained for the [termlnk](https://github.com/termlnk) project. It adds:
 
-[![Compile package](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/compile.yml) [![Publish package to npmjs.com](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/publish.yml/badge.svg)](https://github.com/dylankenneally/react-native-ssh-sftp/actions/workflows/publish.yml) [![View documentation](https://img.shields.io/badge/View-documentation-blue)](https://dylankenneally-react-native-ssh-sftp-96.mintlify.app)
+- **Gradle 9 / AGP 8 compatibility** — drops the removed `jcenter()` repository and declares the AGP 8+ `namespace`, so the library builds under Expo SDK 55 / React Native 0.85.
+- **iOS Simulator support on Apple Silicon** — replaces NMSSH's device-only static libraries with the `CSSH.xcframework` shipped by [DimaRU/Libssh2Prebuild](https://github.com/DimaRU/Libssh2Prebuild), bundling both device and simulator slices.
 
-## Full documentation
-
-A full set of [documentation is available on Mintlify](https://dylankenneally-react-native-ssh-sftp-96.mintlify.app), which includes:
-
-1. Installation
-1. Quick start guide
-1. API reference
-1. Core concepts
-1. Guides
-
-Below is a quick installation and usage guide to get up and running. The [full documentation](https://dylankenneally-react-native-ssh-sftp-96.mintlify.app) is recommended in addition to the below.
+The wrapping API (`SSHClient`) is otherwise unchanged from upstream, see the [Usage](#usage) section below.
 
 ## Installation
 
 ```bash
-npm install @dylankenneally/react-native-ssh-sftp
+npm install @termlnk/react-native-ssh-sftp
 ```
 
 ### iOS
 
-Update your `Podfile` to use the [aanah0's fork](https://github.com/aanah0/NMSSH) of [NMSSH](https://github.com/NMSSH/NMSSH). Note that we use the forked version to give us a required later version of libssh. Your `Podfile` is located in your React Native project at `./ios/Podfile`.
+iOS support relies on two binary pods that this fork wires up automatically:
+
+- [`termlnk/NMSSH`](https://github.com/termlnk/NMSSH) — fork of [`aanah0/NMSSH`](https://github.com/aanah0/NMSSH) (via [`EthanShoeDev/NMSSH`](https://github.com/EthanShoeDev/NMSSH)) with the vendored static libs removed and a dependency on `CSSH-Binary` added.
+- `CSSH-Binary` — a tiny CocoaPod, shipped as [`CSSH-Binary.podspec`](./CSSH-Binary.podspec) in this repository, that vends the `CSSH.xcframework` zipped from `DimaRU/Libssh2Prebuild` releases.
+
+#### With Expo (recommended)
+
+Add `expo-build-properties` to the project and inject both pods via `extraPods` in `app.json`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              {
+                "name": "CSSH-Binary",
+                "podspec": "https://raw.githubusercontent.com/termlnk/react-native-ssh-sftp/main/CSSH-Binary.podspec"
+              },
+              {
+                "name": "NMSSH",
+                "git": "https://github.com/termlnk/NMSSH.git",
+                "branch": "master"
+              }
+            ]
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+Then `npx expo prebuild --platform ios --clean && npx pod-install`.
+
+#### Bare React Native
+
+Add both pods to the project's `ios/Podfile` and run `pod install`:
 
 ```ruby
-target '[your project's name]' do
-  pod 'NMSSH', :git => 'https://github.com/aanah0/NMSSH.git' # <-- add this line
-  # ... rest of your target details ...
+target '[YourApp]' do
+  pod 'CSSH-Binary', :podspec => 'https://raw.githubusercontent.com/termlnk/react-native-ssh-sftp/main/CSSH-Binary.podspec'
+  pod 'NMSSH', :git => 'https://github.com/termlnk/NMSSH.git', :branch => 'master'
+  # ... rest of the target ...
 end
 ```
 
-And then run `pod install` in your `./ios` directory.
+#### Flipper / OpenSSL conflict
 
-```bash
-cd ios
-pod install
-cd -
-```
-
-> [!TIP]
-> Adding a `postinstall` script to your `package.json` file to run `pod install` after `npm install` is a good idea. The [`pod-install`](https://www.npmjs.com/package/pod-install) package is a good way to do this.
->
-> ```json
-> {
->   "scripts": {
->     "postinstall": "npx pod-install",
->   }
-> }
-> ```
-
-#### Having OpenSSL issues on iOS?
-
-If you are using [Flipper](https://fbflipper.com/) to debug your app, it will already have a copy of OpenSSL included. This can cause issues with the version of OpenSSL that NMSSH uses. You can disable flipper by removing/commenting out the `flipper_configuration => flipper_config,` line in your `Podfile`.
+If [Flipper](https://fbflipper.com/) is enabled it ships its own copy of OpenSSL which collides with NMSSH's. Disable Flipper by commenting out the `flipper_configuration` line in the Podfile, or remove the Flipper config from the Expo config plugin.
 
 ### Android
 
-No additional steps are needed for Android.
+No additional setup is required beyond installing the package. The library targets `compileSdk 36` / `targetSdk 36` and `minSdk 21`, and is compatible with the Gradle 9 / AGP 8 wrapper that Expo SDK 55 generates.
 
 ### Linking
 
-This project has been updated to use React Native v84 (the latest at the time of writing, Feb 2026) - which means that manual linking is not required.
+This project follows React Native's autolinking, so manual linking is not required (RN >= 0.60).
 
 ## Usage
 
 All functions that run asynchronously where we have to wait for a result returns Promises that can reject if an error occurred.
 
-> [!NOTE]
-> On iOS, this package currently doesn't support the simulator, you will need to have your app running on a physical device. If you  would like to know more about this, see [this issue](https://github.com/dylankenneally/react-native-ssh-sftp/issues/20). I'd welcome a PR to resolve this.
->
 ### Create a client using password authentication
 
 ```javascript
-import SSHClient from '@dylankenneally/react-native-ssh-sftp';
+import SSHClient from '@termlnk/react-native-ssh-sftp';
 
 SSHClient.connectWithPassword(
   "10.0.0.10",
@@ -87,7 +97,7 @@ SSHClient.connectWithPassword(
 ### Create a client using public key authentication
 
 ```javascript
-import SSHClient from 'react-native-ssh-sftp';
+import SSHClient from '@termlnk/react-native-ssh-sftp';
 
 SSHClient.connectWithKey(
   "10.0.0.10",
@@ -238,19 +248,18 @@ client.sftpCancelUpload();
 client.disconnectSFTP();
 ```
 
-## Example app
-
-You can find a very simple example app for the usage of this library [here](https://github.com/dylankenneally/react-native-ssh-sftp-example).
-
 ## Credits
 
 This package wraps the following libraries, which provide the actual SSH/SFTP functionality:
 
-- [NMSSH](https://github.com/aanah0/NMSSH) for iOS
-- [JSch](http://www.jcraft.com/jsch/) for Android ([from Matthias Wiedemann fork](https://github.com/mwiede/jsch))
+- [NMSSH](https://github.com/aanah0/NMSSH) on iOS, via [`termlnk/NMSSH`](https://github.com/termlnk/NMSSH) for the XCFramework-based binary chain.
+- [JSch](http://www.jcraft.com/jsch/) on Android, via [Matthias Wiedemann's fork](https://github.com/mwiede/jsch).
+- [`CSSH.xcframework`](https://github.com/DimaRU/Libssh2Prebuild) bundling libssh2 + OpenSSL with both device and simulator slices.
 
-This package is a fork of Emmanuel Natividad's [react-native-ssh-sftp](https://github.com/enatividad/react-native-ssh-sftp) package. The fork chain from there is as follows:
+This package is a fork of Emmanuel Natividad's [react-native-ssh-sftp](https://github.com/enatividad/react-native-ssh-sftp). The fork chain:
 
 1. [Gabriel Paul "Cley Faye" Risterucci](https://github.com/KeeeX/react-native-ssh-sftp)
 1. [Bishoy Mikhael](https://github.com/MrBmikhael/react-native-ssh-sftp)
 1. [Qian Sha](https://github.com/shaqian/react-native-ssh-sftp)
+1. [Dylan Kenneally](https://github.com/dylankenneally/react-native-ssh-sftp)
+1. [termlnk](https://github.com/termlnk/react-native-ssh-sftp) — current
